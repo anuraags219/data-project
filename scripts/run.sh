@@ -1,31 +1,74 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 JOB=$1
-PROFILE=${2:-default}
+PROFILES=${2:-}
 
 CONTAINER="spark-local"
 SPARK="/opt/spark/bin/spark-submit"
 
-JOB_IN_CONTAINER="/opt/spark/jobs/$(basename $JOB)"
-CONFIG="/opt/spark/configs"
+JOB_IN_CONTAINER="/opt/spark/jobs/$(basename "$JOB")"
 
 ARGS=""
 
-# base config
-while IFS='=' read -r k v; do
-  [[ -n "$k" ]] && ARGS="$ARGS --conf $k=$v"
-done < <(docker exec $CONTAINER cat $CONFIG/spark-default.conf)
+load_conf() {
+    local CONF_FILE="$1"
 
-# gluten config
-if [ "$PROFILE" == "gluten" ]; then
-  while IFS='=' read -r k v; do
-    [[ -n "$k" ]] && ARGS="$ARGS --conf $k=$v"
-  done < <(docker exec $CONTAINER cat $CONFIG/gluten.conf)
+    echo "Loading config: $CONF_FILE"
+
+    while IFS='=' read -r key value || [[ -n "$key" ]]; do
+
+        # trim whitespace
+        key=$(echo "$key" | xargs)
+        value=$(echo "$value" | xargs)
+
+        # skip blanks/comments
+        [[ -z "$key" ]] && continue
+        [[ "$key" =~ ^# ]] && continue
+
+        echo "  $key=$value"
+
+        ARGS="$ARGS --conf $key=$value"
+
+    done < <(
+        docker exec "$CONTAINER" sh -c "cat $CONF_FILE 2>/dev/null || true"
+    )
+}
+
+# --------------------------------------------------
+# Always load base Spark config
+# --------------------------------------------------
+
+load_conf /opt/spark/configs/spark-default.conf
+
+# --------------------------------------------------
+# Load optional profiles
+# Example:
+#   kafka
+#   gluten
+#   kafka,gluten
+# --------------------------------------------------
+
+if [[ -n "$PROFILES" ]]; then
+
+    IFS=',' read -ra PROFILE_LIST <<< "$PROFILES"
+
+    for PROFILE in "${PROFILE_LIST[@]}"; do
+
+        PROFILE=$(echo "$PROFILE" | xargs)
+
+        load_conf "/opt/spark/configs/${PROFILE}.conf"
+
+    done
 fi
 
-docker exec $CONTAINER \
-  $SPARK \
-  $ARGS \
-  $JOB_IN_CONTAINER
+echo ""
+echo "Submitting:"
+echo "$SPARK $ARGS $JOB_IN_CONTAINER"
+echo ""
+
+docker exec "$CONTAINER" \
+    $SPARK \
+    $ARGS \
+    "$JOB_IN_CONTAINER"

@@ -1,0 +1,28 @@
+services:
+  kafka:
+    image: apache/kafka:4.0.0
+    container_name: kafka
+
+    env_file:
+      - ../../kafka/kafka.env
+
+    ports:
+      - "9092:9092"
+
+    networks:
+      - data-platform
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+networks:
+  data-platform:
+    name: data-platform
+    external: true

@@ -1,25 +1,31 @@
 services:
   spark:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: ../..
+      dockerfile: spark/Dockerfile
 
     container_name: spark-local
 
     user: root
+    networks:
+      - data-platform
 
     ports:
       - "4040:4040"
 
     volumes:
-      - ../spark/jobs:/opt/spark/jobs
-      - ../spark/configs:/opt/spark/configs
+      - ../../spark/jobs:/opt/spark/jobs
+      - ../../spark/configs:/opt/spark/configs
+      - ../../spark/output:/opt/spark/output
+      - ../../spark/checkpoints:/opt/spark/checkpoints
       - spark-events:/tmp/spark-events
 
     stdin_open: true
     tty: true
 
     command: tail -f /dev/null
+
+    restart: unless-stopped
 
   history-server:
     image: apache/spark:3.5.8
@@ -31,9 +37,12 @@ services:
     ports:
       - "18081:18080"
 
+    networks:
+      - data-platform
+
     volumes:
       - spark-events:/tmp/spark-events
-      - ../spark/configs:/opt/spark/conf
+      - ../../spark/configs:/opt/spark/conf
 
     environment:
       SPARK_HISTORY_OPTS: >-
@@ -45,3 +54,8 @@ services:
 
 volumes:
   spark-events:
+
+networks:
+  data-platform:
+    external: true
+    name: data-platform

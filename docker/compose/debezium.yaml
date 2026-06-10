@@ -1,0 +1,18 @@
+services:
+  connect:
+    image: quay.io/debezium/connect:3.0.0.Final
+    container_name: debezium-connect
+
+    env_file:
+      - ../../debezium/connect.env
+
+    ports:
+      - "8083:8083"
+
+    networks:
+      - data-platform
+
+networks:
+  data-platform:
+    external: true
+    name: data-platform

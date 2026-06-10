@@ -1,0 +1,16 @@
+services:
+
+  postgres:
+    image: debezium/postgres:16
+    container_name: postgres
+    env_file:
+      - ../../postgres/postgres.env
+    volumes:
+      - ../../postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - data-platform
+
+networks:
+  data-platform:
+    external: true
+    name: data-platform

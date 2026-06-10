@@ -1,0 +1,17 @@
+services:
+  postgres-updater:
+    build:
+      context: ../..
+      dockerfile: docker/postgres/updater/Dockerfile
+
+    container_name: postgres-updater
+
+    restart: unless-stopped
+
+    networks:
+      - data-platform
+
+networks:
+  data-platform:
+    external: true
+    name: data-platform

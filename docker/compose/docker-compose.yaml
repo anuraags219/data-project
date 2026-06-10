@@ -1,0 +1,116 @@
+services:
+
+  postgres:
+    image: debezium/postgres:16
+    container_name: postgres
+
+    env_file:
+      - ../../postgres/postgres.env
+
+    volumes:
+      - ../../postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    restart: unless-stopped
+
+  kafka:
+    image: apache/kafka:4.0.0
+    container_name: kafka
+
+    env_file:
+      - ../../kafka/kafka.env
+
+    ports:
+      - "9092:9092"
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  connect:
+    image: quay.io/debezium/connect:3.0.0.Final
+    container_name: debezium-connect
+
+    env_file:
+      - ../../debezium/connect.env
+
+    ports:
+      - "8083:8083"
+
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+  postgres-updater:
+    build:
+      context: ../..
+      dockerfile: postgres/updater/Dockerfile
+
+    container_name: postgres-updater
+
+    depends_on:
+      - postgres
+
+    restart: unless-stopped
+
+  spark:
+    build:
+      context: ../..
+      dockerfile: spark/Dockerfile
+
+    container_name: spark-local
+
+    user: root
+
+    ports:
+      - "4040:4040"
+
+    volumes:
+      - ../../spark/jobs:/opt/spark/jobs
+      - ../../spark/configs:/opt/spark/configs
+      - ../../spark/output:/opt/spark/output
+      - ../../spark/checkpoints:/opt/spark/checkpoints
+      - spark-events:/tmp/spark-events
+
+    stdin_open: true
+    tty: true
+
+    command: tail -f /dev/null
+
+    restart: unless-stopped
+
+  history-server:
+    image: apache/spark:3.5.8
+
+    container_name: spark-history-server
+
+    user: root
+
+    ports:
+      - "18081:18080"
+
+    volumes:
+      - spark-events:/tmp/spark-events
+      - ../../spark/configs:/opt/spark/conf
+
+    environment:
+      SPARK_HISTORY_OPTS: >-
+        -Dspark.history.fs.logDirectory=file:///tmp/spark-events
+
+    command: >
+      /opt/spark/bin/spark-class
+      org.apache.spark.deploy.history.HistoryServer
+
+    restart: unless-stopped
+
+volumes:
+  spark-events:
