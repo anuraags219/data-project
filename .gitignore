@@ -21,3 +21,6 @@ spark-warehouse/
 # IDE
 .vscode/
 .idea/gluten/*.jar
+
+spark/checkpoints/
+spark/output/
