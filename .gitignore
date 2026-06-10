@@ -1,0 +1,23 @@
+# Spark / JVM / build artifacts
+*.jar
+*.class
+
+# Gluten / native bundles
+gluten/
+
+# Logs
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Spark warehouse
+spark-warehouse/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/gluten/*.jar

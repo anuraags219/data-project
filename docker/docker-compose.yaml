@@ -1,0 +1,47 @@
+services:
+  spark:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+
+    container_name: spark-local
+
+    user: root
+
+    ports:
+      - "4040:4040"
+
+    volumes:
+      - ../spark/jobs:/opt/spark/jobs
+      - ../spark/configs:/opt/spark/configs
+      - spark-events:/tmp/spark-events
+
+    stdin_open: true
+    tty: true
+
+    command: tail -f /dev/null
+
+  history-server:
+    image: apache/spark:3.5.8
+
+    container_name: spark-history-server
+
+    user: root
+
+    ports:
+      - "18081:18080"
+
+    volumes:
+      - spark-events:/tmp/spark-events
+      - ../spark/configs:/opt/spark/conf
+
+    environment:
+      SPARK_HISTORY_OPTS: >-
+        -Dspark.history.fs.logDirectory=file:///tmp/spark-events
+
+    command: >
+      /opt/spark/bin/spark-class
+      org.apache.spark.deploy.history.HistoryServer
+
+volumes:
+  spark-events:

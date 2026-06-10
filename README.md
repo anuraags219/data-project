@@ -1,2 +1,2 @@
-# data-project
+# data-platform
 This project will consists of all the fundamental data components sitched together.
